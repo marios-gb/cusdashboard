@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Customer Interaction Dashboard</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Cytoscape -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+
+    <!-- Vis -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet"/>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+
+    <!-- Echarts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+	
+	<!-- Softone -->
+	<script src="https://s1sites01.blob.core.windows.net/lib/webcomponents/xcon.js"></script>
+
+    <style>
+
+        body {
+            background: #f4f6f9;
+            font-family: Arial;
+            overflow: hidden;
+        }
+
+        .top-header {
+            background: white;
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            height: 90px;
+        }
+
+        .main-container {
+            height: calc(100vh - 90px);
+        }
+
+        .panel {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+            padding: 10px;
+            height: 100%;
+        }
+
+        #graph {
+            height: 100%;
+            width: 100%;
+        }
+
+        #timeline {
+            height: 350px;
+            border: 1px solid #ddd;
+        }
+
+        #chart1 {
+            height: 300px;
+        }
+
+        .event-list {
+            height: 350px;
+            overflow-y: auto;
+        }
+
+        .event-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .event-item:hover {
+            background: #f7f7f7;
+            cursor: pointer;
+        }
+
+        .badge-type {
+            float: right;
+        }
+
+    </style>
+
+</head>
+
+<body onload="setup()">
+
+    <!-- HEADER -->
+    <div class="top-header">
+
+        <div class="row">
+
+            <div class="col-md-4">
+
+			<div><b>Date Range</b></div>
+
+			<div class="d-flex gap-1">
+
+				<input
+					type="date"
+					class="form-control form-control-sm"
+					id="dateFrom"
+				/>
+
+				<input
+					type="date"
+					class="form-control form-control-sm"
+					id="dateTo"
+				/>
+
+			</div>
+
+			</div>
+
+            <div class="col-md-2">
+                <div><b>Balance</b></div>
+                <div>€12,550</div>
+            </div>
+
+            <div class="col-md-2">
+                <div><b>Orders</b></div>
+                <div>14</div>
+            </div>
+
+            <div class="col-md-2">
+                <div><b>Complaints</b></div>
+                <div>2</div>
+            </div>
+
+            <div class="col-md-3">
+                <div><b>Salesman</b></div>
+                <div>Michael Adams</div>
+            </div>
+			
+			
+
+        </div>
+
+    </div>
+
+    <!-- MAIN -->
+    <div class="container-fluid main-container mt-2">
+
+        <div class="row h-100">
+
+            <!-- LEFT -->
+            <div class="col-md-7 h-100">
+
+                <div class="panel mb-2" style="height:55%;">
+
+                    <h5>Relationship Graph</h5>
+
+                    <div id="graph"></div>
+
+                </div>
+
+                <div class="panel" style="height:42%;">
+
+                    <h5>Timeline</h5>
+
+                    <div id="timeline"></div>
+
+                </div>
+
+            </div>
+
+            <!-- RIGHT -->
+            <div class="col-md-5 h-100">
+
+                <div class="panel mb-2" style="height:45%;">
+
+                    <h5>Customer Activity</h5>
+
+                    <div id="chart1"></div>
+
+                </div>
+
+                <div class="panel" style="height:52%;">
+
+                    <h5>Latest Events</h5>
+
+                    <div class="event-list">
+
+                        <div class="event-item">
+                            Incoming Call
+                            <span class="badge bg-primary badge-type">CALL</span>
+                            <div><small>2026-05-10 09:22</small></div>
+                        </div>
+
+                        <div class="event-item">
+                            Order #1544 Created
+                            <span class="badge bg-success badge-type">ORDER</span>
+                            <div><small>2026-05-10 10:15</small></div>
+                        </div>
+
+                        <div class="event-item">
+                            Invoice #455 Issued
+                            <span class="badge bg-warning badge-type">INVOICE</span>
+                            <div><small>2026-05-10 11:02</small></div>
+                        </div>
+
+                        <div class="event-item">
+                            Complaint Registered
+                            <span class="badge bg-danger badge-type">COMPLAINT</span>
+                            <div><small>2026-05-10 14:33</small></div>
+                        </div>
+
+                        <div class="event-item">
+                            Bank Transfer Received
+                            <span class="badge bg-info badge-type">BANK</span>
+                            <div><small>2026-05-10 16:10</small></div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+	var compDS;
+	var fromDate;
+	var toDate;
+	
+	function drawDashboard()
+	{
+		
+        //---------------------------------------------
+        // CYTOSCAPE GRAPH
+        //---------------------------------------------
+
+        var cy = cytoscape({
+
+            container: document.getElementById('graph'),
+
+            elements: [
+
+                // NODES
+
+                {
+                    data: {
+                        id: 'customer',
+                        label: 'Customer'
+                    }
+                },
+
+                {
+                    data: {
+                        id: 'salesman',
+                        label: 'Salesman'
+                    }
+                },
+
+                {
+                    data: {
+                        id: 'order1',
+                        label: 'Order #1544'
+                    }
+                },
+
+                {
+                    data: {
+                        id: 'invoice1',
+                        label: 'Invoice #455'
+                    }
+                },
+
+                {
+                    data: {
+                        id: 'call1',
+                        label: 'Incoming Call'
+                    }
+                },
+
+                {
+                    data: {
+                        id: 'complaint1',
+                        label: 'Complaint'
+                    }
+                },
+
+                {
+                    data: {
+                        id: 'bank1',
+                        label: 'Bank Transfer'
+                    }
+                },
+
+                // EDGES
+
+                {
+                    data: {
+                        source: 'customer',
+                        target: 'salesman'
+                    }
+                },
+
+                {
+                    data: {
+                        source: 'customer',
+                        target: 'order1'
+                    }
+                },
+
+                {
+                    data: {
+                        source: 'order1',
+                        target: 'invoice1'
+                    }
+                },
+
+                {
+                    data: {
+                        source: 'customer',
+                        target: 'call1'
+                    }
+                },
+
+                {
+                    data: {
+                        source: 'customer',
+                        target: 'complaint1'
+                    }
+                },
+
+                {
+                    data: {
+                        source: 'invoice1',
+                        target: 'bank1'
+                    }
+                }
+
+            ],
+
+            style: [
+
+                {
+                    selector: 'node',
+                    style: {
+                        'background-color': '#007bff',
+                        'label': 'data(label)',
+                        'color': '#fff',
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'font-size': '11px',
+                        'width': '55px',
+                        'height': '55px'
+                    }
+                },
+
+                {
+                    selector: 'edge',
+                    style: {
+                        'line-color': '#999',
+                        'width': 2,
+                        'target-arrow-shape': 'triangle',
+                        'target-arrow-color': '#999',
+                        'curve-style': 'bezier'
+                    }
+                }
+
+            ],
+
+            layout: {
+                name: 'cose'
+            }
+
+        });
+
+        //---------------------------------------------
+        // TIMELINE
+        //---------------------------------------------
+
+        var items = new vis.DataSet([
+
+            {
+                id: 1,
+                content: 'Incoming Call',
+                start: '2026-05-10 09:22'
+            },
+
+            {
+                id: 2,
+                content: 'Order #1544',
+                start: '2026-05-10 10:15'
+            },
+
+            {
+                id: 3,
+                content: 'Invoice #455',
+                start: '2026-05-10 11:02'
+            },
+
+            {
+                id: 4,
+                content: 'Complaint',
+                start: '2026-05-10 14:33'
+            },
+
+            {
+                id: 5,
+                content: 'Bank Transfer',
+                start: '2026-05-10 16:10'
+            }
+
+        ]);
+
+        var container = document.getElementById('timeline');
+
+        var options = {
+            stack: true,
+            editable: false,
+            zoomMin: 1000 * 60 * 60
+        };
+
+        var timeline = new vis.Timeline(container, items, options);
+
+        //---------------------------------------------
+        // ECHARTS
+        //---------------------------------------------
+
+        var chartDom = document.getElementById('chart1');
+
+        var myChart = echarts.init(chartDom);
+
+        var option = {
+
+            tooltip: {
+                trigger: 'axis'
+            },
+
+            xAxis: {
+                type: 'category',
+                data: [
+                    'Jan',
+                    'Feb',
+                    'Mar',
+                    'Apr',
+                    'May'
+                ]
+            },
+
+            yAxis: {
+                type: 'value'
+            },
+
+            series: [
+
+                {
+                    data: [5, 8, 12, 9, 14],
+                    type: 'line',
+                    smooth: true
+                }
+
+            ]
+
+        };
+
+        myChart.setOption(option);
+
+        //---------------------------------------------
+        // NODE CLICK
+        //---------------------------------------------
+
+        cy.on('tap', 'node', function(evt) 
+		{
+
+			var node = evt.target;
+
+			alert('Selected: ' + node.data('label'));
+
+		});
+	}
+		
+		//---------------------------------------------
+		// FILTER EVENTS
+		//---------------------------------------------
+
+		document.getElementById('dateFrom').addEventListener('change', applyFilters);
+
+		document.getElementById('dateTo').addEventListener('change', applyFilters);		
+
+		function applyFilters() {
+
+			fromDate =	document.getElementById('dateFrom').value;
+
+			toDate =  document.getElementById('dateTo').value;			
+
+			console.log('FILTER');
+
+			console.log('FROM:', fromDate);
+
+			console.log('TO:', toDate);			
+
+			// HERE:
+			// Reload timeline
+			// Reload graph
+			// Reload charts
+			// Reload grid
+
+		}
+		
+		function setup()
+		{
+			/* INITIAL LOAD */			
+			
+			if(typeof XCon!=="undefined")
+			{
+				fromDate =  XCon.EVAL("FormatDateTime('yyyy-mm-dd',StartFyeDate)");
+				toDate =  XCon.EVAL("FormatDateTime('yyyy-mm-dd',EndFyeDate)");
+				
+				console.log('SETUP');
+				console.log('FROM:', fromDate);
+				console.log('TO:', toDate);
+				
+				document.getElementById('dateFrom').value=fromDate;
+				document.getElementById('dateTo').value=toDate;
+				
+				compDS = XCon.GETSQLDATASET('SELECT NAME FROM COMPANY WHERE COMPANY=:1',XCon.SYS.COMPANY);
+				console.log(compDS.RECORDCOUNT);
+				if(compDS.RECORDCOUNT>0)	
+				{
+					compDS.FIRST;
+					console.log(compDS.NAME);
+					document.getElementById('compName').innerHTML=compDS.NAME;
+				}
+
+			}
+			drawDashboard();
+		}
+    </script>
+
+</body>
+
+</html>
